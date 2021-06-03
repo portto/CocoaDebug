@@ -32,7 +32,7 @@ class NetworkViewController: UIViewController {
         searchModels = cacheModels
         
         if searchText == "" {
-            models = cacheModels
+            models = cacheModels.reversed()
         } else {
             guard let searchModels = searchModels else {return}
             
@@ -43,7 +43,7 @@ class NetworkViewController: UIViewController {
                     self.searchModels?.remove(at: index)
                 }
             }
-            models = self.searchModels
+            models = self.searchModels?.reversed()
         }
     }
     
@@ -204,6 +204,9 @@ extension NetworkViewController: UITableViewDataSource {
         
         cell.httpModel = models?[indexPath.row]
         cell.index = indexPath.row
+        if CocoaDebugSettings.shared.isTargetDomains(url: cell.httpModel?.url) {
+            cell.contentView.backgroundColor = .darkGray
+        }
         return cell
     }
 }

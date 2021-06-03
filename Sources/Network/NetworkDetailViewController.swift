@@ -94,6 +94,11 @@ class NetworkDetailViewController: UITableViewController, MFMailComposeViewContr
             if let requestHeaderFields = httpModel?.requestHeaderFields {
                 if !requestHeaderFields.isEmpty {
                     model_2 = NetworkDetailModel.init(title: "REQUEST HEADER", content: requestHeaderFields.description, url: httpModel?.url.absoluteString, httpModel: httpModel)
+                    
+                    if CocoaDebugSettings.shared.isTargetDomains(url: httpModel?.url) {
+                        let jwt = (requestHeaderFields["Authorization"] as? String) ?? ""
+                        httpModel?.requestHeaderFields?["Authorization"] = decode(jwtToken: jwt)
+                    }
                     model_2.requestHeaderFields = requestHeaderFields
                     model_2.content = String(requestHeaderFields.dictionaryToString()?.dropFirst().dropLast().dropFirst().dropLast().dropFirst().dropFirst() ?? "").replacingOccurrences(of: "\",\n  \"", with: "\",\n\"").replacingOccurrences(of: "\\/", with: "/")
                 }
@@ -131,9 +136,13 @@ class NetworkDetailViewController: UITableViewController, MFMailComposeViewContr
             let model_8 = NetworkDetailModel.init(title: "TOTAL TIME", content: httpModel?.totalDuration, url: httpModel?.url.absoluteString, httpModel: httpModel)
             let model_9 = NetworkDetailModel.init(title: "MIME TYPE", content: httpModel?.mineType, url: httpModel?.url.absoluteString, httpModel: httpModel)
             var model_2 = NetworkDetailModel.init(title: "REQUEST HEADER", content: nil, url: httpModel?.url.absoluteString, httpModel: httpModel)
-            if let requestHeaderFields = httpModel?.requestHeaderFields {
+            if var requestHeaderFields = httpModel?.requestHeaderFields {
                 if !requestHeaderFields.isEmpty {
                     model_2 = NetworkDetailModel.init(title: "REQUEST HEADER", content: requestHeaderFields.description, url: httpModel?.url.absoluteString, httpModel: httpModel)
+                    if CocoaDebugSettings.shared.isTargetDomains(url: httpModel?.url) {
+                        let jwt = (requestHeaderFields["Authorization"] as? String) ?? ""
+                        requestHeaderFields["Authorization"] = decode(jwtToken: jwt)
+                    }
                     model_2.requestHeaderFields = requestHeaderFields
                     model_2.content = String(requestHeaderFields.dictionaryToString()?.dropFirst().dropLast().dropFirst().dropLast().dropFirst().dropFirst() ?? "").replacingOccurrences(of: "\",\n  \"", with: "\",\n\"").replacingOccurrences(of: "\\/", with: "/")
                 }
@@ -504,5 +513,37 @@ extension NetworkDetailViewController {
                 self.present(alert, animated: true, completion: nil)
             }
         }
+    }
+}
+
+extension NetworkDetailViewController {
+    
+    func decode(jwtToken jwt: String) -> [String: Any] {
+      let segments = jwt.components(separatedBy: ".")
+      return decodeJWTPart(segments[1]) ?? [:]
+    }
+
+    func base64UrlDecode(_ value: String) -> Data? {
+      var base64 = value
+        .replacingOccurrences(of: "-", with: "+")
+        .replacingOccurrences(of: "_", with: "/")
+
+      let length = Double(base64.lengthOfBytes(using: String.Encoding.utf8))
+      let requiredLength = 4 * ceil(length / 4.0)
+      let paddingLength = requiredLength - length
+      if paddingLength > 0 {
+        let padding = "".padding(toLength: Int(paddingLength), withPad: "=", startingAt: 0)
+        base64 = base64 + padding
+      }
+      return Data(base64Encoded: base64, options: .ignoreUnknownCharacters)
+    }
+
+    func decodeJWTPart(_ value: String) -> [String: Any]? {
+      guard let bodyData = base64UrlDecode(value),
+        let json = try? JSONSerialization.jsonObject(with: bodyData, options: []), let payload = json as? [String: Any] else {
+          return nil
+      }
+
+      return payload
     }
 }

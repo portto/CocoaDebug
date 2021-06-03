@@ -15,13 +15,27 @@ import Foundation
     @objc public var isRunning: Bool = false
     
     @objc public var slowAnimations: Bool = false {
-        didSet {            
+        didSet {
             if slowAnimations == false {
                 UIApplication.shared.windows.first?.layer.speed = 1;
             } else {
                 UIApplication.shared.windows.first?.layer.speed = 0.1;
             }
         }
+    }
+    
+    @objc public func isTargetDomains(url: URL?) -> Bool {
+        guard let url = url else { return false }
+        let targetDomains = ["blocto.app", "opensea.io"]
+        let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+        var result = false
+        targetDomains.forEach {
+            if let host = url.host,
+               host.contains($0) {
+                result = true
+            }
+        }
+        return result
     }
     
     @objc public var responseShake: Bool = false {
