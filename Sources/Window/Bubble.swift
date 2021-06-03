@@ -23,6 +23,8 @@ private var _height: CGFloat = 25
 
 class Bubble: UIView {
     
+    var hasPerformedSetup: Bool = false
+    
     weak var delegate: BubbleDelegate?
     
     public var width: CGFloat = _width
@@ -164,6 +166,9 @@ class Bubble: UIView {
         let panGesture = UIPanGestureRecognizer(target: self, action: selector)
         self.addGestureRecognizer(panGesture)
         
+        let longPress = UILongPressGestureRecognizer(target: self, action: #selector(Bubble.longPress(sender:)))
+        self.addGestureRecognizer(longPress)
+        
         //notification
         NotificationCenter.default.addObserver(self, selector: #selector(reloadHttp_notification(_:)), name: NSNotification.Name(rawValue: "reloadHttp_CocoaDebug"), object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(deleteAllLogs_notification), name: NSNotification.Name(rawValue: "deleteAllLogs_CocoaDebug"), object: nil)
@@ -264,6 +269,25 @@ class Bubble: UIView {
         _HttpDatasource.shared().reset()
         CocoaDebugSettings.shared.networkLastIndex = 0
         NotificationCenter.default.post(name: NSNotification.Name("deleteAllLogs_CocoaDebug"), object: nil, userInfo: nil)
+    }
+    
+    @objc func longPress(sender: UILongPressGestureRecognizer) {
+        if sender.state == .began {
+            guard let cls = NSClassFromString("UIDebuggingInformationOverlay") as? UIWindow.Type else {return}
+
+            if !self.hasPerformedSetup {
+                cls.perform(NSSelectorFromString("prepareDebuggingOverlay"))
+                self.hasPerformedSetup = true
+            }
+
+            let tapGesture = UITapGestureRecognizer()
+            tapGesture.state = .ended
+
+            if let handlerCls = NSClassFromString("UIDebuggingInformationOverlayInvokeGestureHandler") as? NSObject.Type {
+                let handler = handlerCls.perform(NSSelectorFromString("mainHandler")).takeUnretainedValue()
+                _  = handler.perform(NSSelectorFromString("_handleActivationGesture:"), with: tapGesture)
+            }
+        }
     }
     
     @objc func panDidFire(panner: UIPanGestureRecognizer) {
